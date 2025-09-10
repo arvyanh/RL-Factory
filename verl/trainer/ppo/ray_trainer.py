@@ -781,9 +781,11 @@ class RayPPOTrainer:
             test_batch = test_batch.union(test_output_gen_batch)
             test_batch.meta_info["validate"] = True
 
+            # padding the data for distribute data across rank for reward rollout
+            test_batch_padded, pad_size = pad_dataproto_to_divisor(test_batch, size_divisor)
             # evaluate using reward_function
-            result = self.val_reward_fn(test_batch, return_dict=True)
-            reward_tensor = result["reward_tensor"]
+            result = self.val_reward_fn(test_batch_padded, return_dict=True)
+            reward_tensor = result["reward_tensor"][:-pad_size]
             scores = reward_tensor.sum(-1).cpu().tolist()
             
             # 保存当前批次的分数
